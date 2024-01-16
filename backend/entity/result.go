@@ -11,6 +11,7 @@ type Result struct {
 	Percent float32
 	Quality float32
 	Date time.Time
+	QRcode string
 
 	//FK
 	UserID *uint

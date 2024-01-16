@@ -1,117 +1,126 @@
-import React, { useState } from 'react';
-import { useNavigate , Link } from 'react-router-dom'; // Use useNavigate instead of useHistory
-import { Form, Input, Button, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { GetCustomerByHash } from "../../services/http/customer/customer";
-import { CustomerInterface } from "../../interfaces/Icustomer";
-import styles from './Login.module.css'
-import BG from '../../assets/etc/BG.jpg';
-import { useCustomer } from '../../context/context'; 
+import React, { useState, FormEvent, ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+import styles from "./Login.module.css"; // Import CSS module
 
-const arrayBufferToHex = (arrayBuffer : any) => {
-  const view = new DataView(arrayBuffer); // Corrected line
-  let hex = '';
-  for (let i = 0; i < view.byteLength; i += 1) {
-    const value = view.getUint8(i);
-    hex += value.toString(16).padStart(2, '0');
-  }
-  return hex;
-};
+interface Inputs {
+  email: string;
+  password: string;
+}
 
-const sha256 = async (message : any) => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return arrayBufferToHex(hashBuffer);
-};
-
-const Login = () => {
+function Login(): JSX.Element {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const { login } = useCustomer(); 
-  const handleLogin = async (value: CustomerInterface) => {
-    const concatenatedString = `${value.UserName}${value.Password}`;
-    const hashedPassword = await sha256(concatenatedString);
-    
-    console.log(value)
-    try {
-      const customer = await GetCustomerByHash(hashedPassword);
-  
-      if (customer) {
-        login(customer);
-        message.success('Login successful');
-        console.log(customer)
-        navigate('/home');
-      } else {
-        message.error('Invalid username or password');
-      }
-    } catch (error) {
-      console.error(error);
-    }
+  const MySwal = withReactContent(Swal);
+  const [inputs, setInputs] = useState<Inputs>({ email: "", password: "" });
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setInputs((values) => ({ ...values, [name]: value }));
   };
-  const onFinish = async (values: CustomerInterface) => {
-    setLoading(true);
-    handleLogin(values);
-    setLoading(false);
-    console.log('Received values of form: ', values);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+
+    const raw = JSON.stringify({
+      email: inputs.email,
+      password: inputs.password,
+      expiresIn: 6000000000000000000000000000,
+    });
+
+    const requestOptions: RequestInit = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+      redirect: "follow",
+    };
+
+    fetch("http://localhost:8080/login", requestOptions)
+      .then((response) => response.json())
+      .then((result) => {
+        console.log(result); // Log the entire response
+        if (result.status === "ok") {
+          const { token } = result;
+          const { userId } = result;  // Access token directly from result
+          console.log(token); // Verify token exists in the response
+          localStorage.setItem("token", token); 
+          localStorage.setItem("userId", userId);// Store the token in local storage
+          MySwal.fire({
+            html: <i>{result.message}</i>,
+            icon: "success",
+          }).then((value) => {
+            navigate("/profile");
+          });
+        } else {
+          MySwal.fire({
+            html: <i>{result.message}</i>,
+            icon: "error",
+          });
+        }
+      })
+      .catch((error) => {
+        console.log("Error during login:", error); // Log any fetch or parsing errors
+        // Handle the error appropriately (display an error message, etc.)
+      });
   };
 
   return (
-    <div className={styles.loginContainer}>
-       <style>
-          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@500&family=PT+Sans&display=swap');
-        </style>
-      <img src={BG} alt="bg" className={styles.bg} />
-      
-      <Form
-        name="login-form"
-        initialValues={{ remember: true }}
-        onFinish={onFinish}
-        className={styles.formContainer}
-      >
-        <h1>Login</h1>
-        
-        <Form.Item
-          name="UserName"
-          rules={[{ required: true, message: 'Please enter your username' }]
-          }
-        >
-          <Input prefix={<UserOutlined />} placeholder="Username" />
-        </Form.Item>
+    <div className={styles.wrapper}> {/* Use CSS module classes */}
+      <div className={styles.login_box}>
+        <form onSubmit={handleSubmit}>
+          <div className={styles["login-header"]}>
+            <span>Login</span>
+          </div>
 
-        <Form.Item
-          name="Password"
-          rules={[{ required: true, message: 'Please enter your password' }]}
-        >
-          <Input.Password
-            prefix={<LockOutlined />}
-            type="password"
-            placeholder="Password"
-          />
-        </Form.Item>
+          <div className={styles.input_box}>
+            <input
+              type="text"
+              id="user"
+              className={styles["input-field"]}
+              name="email"
+              value={inputs.email}
+              onChange={handleChange}
+              required
+            />
+            <label htmlFor="user" className={styles.label}>
+              Username
+            </label>
+            <i className={`bx bx-user ${styles.icon}`}></i>
+          </div>
 
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={loading}
-            block
-          >
-            Log In
-          </Button>
-        </Form.Item>
-        <div className={styles.noRegist}>
-          <h6> Secure by SHA256 </h6>
-          <Link to='/register' className={styles.Link}>
-            <h4>Don't have account ?</h4>
-            <h4 className={styles.regisText}>register now!!</h4>
-          </Link>
-        </div>
+          <div className={styles.input_box}>
+            <input
+              type="password"
+              id="pass"
+              className={styles["input-field"]}
+              name="password"
+              value={inputs.password}
+              onChange={handleChange}
+              required
+            />
+            <label htmlFor="pass" className={styles.label}>
+              Password
+            </label>
+            <i className={`bx bx-lock-alt ${styles.icon}`}></i>
+          </div>
 
-      </Form>
-      
+          {/* Other JSX elements with updated classNames */}
+
+          <div className={styles.input_box}>
+            <input type="submit" className={styles["input-submit"]} value="Login" />
+          </div>
+          <div className={styles.register}>
+            <span>
+              Don't have an account?   <a href="/register">  Register  </a>
+            </span>
+          </div>
+        </form>
+      </div>
     </div>
   );
-};
+}
 
 export default Login;

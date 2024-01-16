@@ -9,6 +9,7 @@ type Wagyu struct {
 	gorm.Model
 	Weight float64
 	Age    float32
+	Picture string
 
 	//FK
 	UserID *uint
