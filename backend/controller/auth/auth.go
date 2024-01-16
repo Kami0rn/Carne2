@@ -18,13 +18,14 @@ import (
 var hmacSampleSecret []byte
 
 // Binding from JSON
+
+
 type RegisterBody struct {
 	FirstName    string `json:"FirstName" binding:"required"`
-	LastName    string `json:"LastName" binding:"required"`
-	Email       string `json:"Email" binding:"required"`
-	PhoneNumber int    `json:"PhoneNumber"`
-	Password         string `json:"Password"`
-
+	LastName     string `json:"LastName" binding:"required"`
+	Email        string `json:"Email" binding:"required"`
+	PhoneNumber  int    `json:"PhoneNumber"`
+	Password     string `json:"Password"`
 }
 
 func Register(c *gin.Context) {
@@ -42,27 +43,38 @@ func Register(c *gin.Context) {
 		return
 	}
 
-
-	//create user
+	// Create user
 	encryptedPassword, _ := bcrypt.GenerateFromPassword([]byte(json.Password), 10)
 	user := entity.User{
 		FirstName:    json.FirstName,
-		Password:    string(encryptedPassword),
-		LastName:    json.LastName,
-		Email:       json.Email,
-		PhoneNumber: json.PhoneNumber,
-
+		Password:     string(encryptedPassword),
+		LastName:     json.LastName,
+		Email:        json.Email,
+		PhoneNumber:  json.PhoneNumber,
 	}
+
+	// Create user record
 	db.Create(&user)
+
+	// Check if user was successfully created
 	if user.ID > 0 {
+		// Create associated wallet
+		wallet := entity.Wallet{
+			Total:  0,
+			UserID: &user.ID, // Use & to get the pointer to user.ID
+		}
+		db.Create(&wallet)
+	
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
 			"message": "User Registered",
-			"userId":  user.ID})
+			"userId":  user.ID,
+		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "error",
-			"message": "User Unregistered"})
+			"message": "User Unregistered",
+		})
 	}
 }
 
