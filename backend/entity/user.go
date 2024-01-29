@@ -7,12 +7,11 @@ import (
 
 type User struct {
 	gorm.Model
-	FirstName string 
-	LastName string
-	PhoneNumber int
-	Email       string `gorm:"uniqueIndex;"`
-	Password string
-
+	FirstName   string `valid:"required~Please fill FirstName"`
+	LastName    string `valid:"required~Please fill FirstName"`
+	PhoneNumber int    `valid:"required~Pease fill phonenumber, matches(^[0]\\d{9}$)~Pease fill valid phonenumber"`
+	Email       string `gorm:"uniqueIndex;" valid:"required~Please fill FirstName, email~Please fill email"`
+	Password    string `valid:"required~Please fill Lastname"`
 
 	//give fk
 	Wallet []Wallet `gorm:"foreignKey:UserID"`
